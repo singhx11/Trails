@@ -13,6 +13,9 @@ import {
   Wallet,
   Bell,
   UserCheck,
+  User,
+  Building2,
+  CheckCircle2,
   LogOut,
   ChevronDown,
   Sparkles,
@@ -176,45 +179,70 @@ export const Navbar: React.FC = () => {
             )}
           </Link>
 
-          {/* User Profile Dropdown */}
+          {/* User Profile Pill & Dropdown */}
           <div className="relative">
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200"
+              className="flex items-center space-x-2.5 px-3 py-1.5 rounded-full hover:bg-slate-100/90 transition-all border border-slate-200/90 bg-white shadow-2xs group"
             >
-              <img
-                src={currentUser.avatarUrl}
-                alt={currentUser.name}
-                className="h-8 w-8 rounded-full object-cover border border-slate-200"
-              />
-              <div className="hidden sm:block text-left">
-                <p className="text-xs font-semibold text-slate-900 leading-none">{currentUser.name}</p>
-                <p className="text-[10px] text-slate-500 capitalize leading-tight mt-0.5">{currentUser.role}</p>
+              <div className="relative">
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-500/20 group-hover:ring-indigo-500/40 transition-all"
+                />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
               </div>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+              <div className="hidden sm:block text-left pr-1">
+                <div className="flex items-center space-x-1">
+                  <p className="text-xs font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+                    {currentUser.name}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-1 mt-0.5">
+                  <span className="text-[10px] font-semibold text-indigo-600 capitalize bg-indigo-50 px-1.5 py-0.2 rounded leading-tight">
+                    {currentUser.role}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
             </button>
 
             {userDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
-                  <p className="text-[11px] text-slate-500 truncate">{currentUser.email}</p>
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
-                      {currentUser.role}
-                    </span>
-                    <span className="text-[10px] text-emerald-600 font-medium">● Online</span>
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95">
+                {/* Profile Card Header */}
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center space-x-3">
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.name}
+                    className="h-10 w-10 rounded-full object-cover border border-slate-200"
+                  />
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-black text-slate-900 truncate">{currentUser.name}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{currentUser.email}</p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                        {currentUser.role}
+                      </span>
+                      <span className="text-[10px] text-emerald-600 font-semibold flex items-center space-x-0.5">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>Active</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="py-1 text-xs text-slate-700 font-medium">
+                <div className="py-1.5 text-xs text-slate-700 font-medium">
                   <Link
                     href="/profile"
                     onClick={() => setUserDropdownOpen(false)}
-                    className="block px-3 py-1.5 hover:bg-slate-50 text-indigo-700 font-bold flex items-center justify-between"
+                    className="px-4 py-2 hover:bg-indigo-50/70 text-indigo-700 font-bold flex items-center justify-between transition-colors"
                   >
-                    <span>Profile & Verification</span>
-                    <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">Step 2</span>
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-indigo-600" />
+                      <span>My Profile & Verification</span>
+                    </div>
+                    <span className="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-bold">Step 2</span>
                   </Link>
 
                   {currentUser.role === "organizer" && (

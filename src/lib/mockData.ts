@@ -3,10 +3,10 @@ import { Campaign, Submission, User, Organization, CreatorProfile, PayoutRecord,
 export const INITIAL_USERS: User[] = [
   {
     id: "user-org-1",
-    name: "Apex Tech Innovations",
-    email: "campaigns@apextech.io",
+    name: "Vikram Malhotra",
+    email: "vikram@apextech.io",
     role: "organizer",
-    avatarUrl: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120&auto=format&fit=crop&q=80",
+    avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&auto=format&fit=crop&q=80",
     createdAt: "2026-09-01T10:00:00Z",
     organizationId: "org-apex",
   },

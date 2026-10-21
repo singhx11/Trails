@@ -208,6 +208,15 @@ export const Navbar: React.FC = () => {
                 </div>
 
                 <div className="py-1 text-xs text-slate-700 font-medium">
+                  <Link
+                    href="/profile"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="block px-3 py-1.5 hover:bg-slate-50 text-indigo-700 font-bold flex items-center justify-between"
+                  >
+                    <span>Profile & Verification</span>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">Step 2</span>
+                  </Link>
+
                   {currentUser.role === "organizer" && (
                     <Link
                       href="/organizer"
@@ -249,6 +258,15 @@ export const Navbar: React.FC = () => {
                   >
                     Fair Competition Rules
                   </Link>
+                  <div className="pt-1 mt-1 border-t border-slate-100">
+                    <Link
+                      href="/login"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="block px-3 py-1.5 hover:bg-slate-50 text-slate-500"
+                    >
+                      Switch Account / Login
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

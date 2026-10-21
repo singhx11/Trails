@@ -18,6 +18,11 @@ export interface Organization {
   category: string;
   website: string;
   verified: boolean;
+  verificationStatus?: "unverified" | "pending" | "verified" | "rejected";
+  businessRegistrationNumber?: string;
+  gstNumber?: string;
+  officialEmail?: string;
+  verificationSubmittedAt?: string;
   totalFunded: number;
   activeCampaignsCount: number;
 }
@@ -36,6 +41,12 @@ export interface CreatorProfile {
     youtube?: string;
   };
   verifiedIdentity: boolean;
+  verificationStatus?: "unverified" | "pending" | "verified" | "rejected";
+  govIdType?: string;
+  govIdNumber?: string;
+  socialFollowersCount?: number;
+  portfolioUrl?: string;
+  verificationSubmittedAt?: string;
 }
 
 export type ContentFormat = "Reel" | "Short" | "Long-form Video";

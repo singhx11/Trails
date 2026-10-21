@@ -3,6 +3,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   User,
+  UserRole,
+  Organization,
+  CreatorProfile,
   Campaign,
   Submission,
   PayoutRecord,
@@ -13,6 +16,8 @@ import {
 } from "@/types";
 import {
   INITIAL_USERS,
+  INITIAL_ORGANIZATIONS,
+  INITIAL_CREATOR_PROFILES,
   INITIAL_CAMPAIGNS,
   INITIAL_SUBMISSIONS,
   INITIAL_PAYOUTS,
@@ -26,12 +31,35 @@ interface AppContextType {
   currentUser: User;
   setCurrentUser: (user: User) => void;
   users: User[];
+  organizations: Organization[];
+  creatorProfiles: CreatorProfile[];
   campaigns: Campaign[];
   submissions: Submission[];
   payouts: PayoutRecord[];
   disputes: DisputeRecord[];
   auditLogs: AuditLog[];
   notifications: PlatformNotification[];
+  login: (email: string, role?: UserRole) => boolean;
+  register: (name: string, email: string, role: UserRole) => User;
+  logout: () => void;
+  submitCreatorVerification: (data: {
+    handle: string;
+    bio: string;
+    categories: string[];
+    instagram?: string;
+    youtube?: string;
+    govIdType: string;
+    govIdNumber: string;
+    portfolioUrl?: string;
+  }) => void;
+  submitOrganizerVerification: (data: {
+    orgName: string;
+    category: string;
+    website: string;
+    businessRegistrationNumber: string;
+    gstNumber: string;
+    officialEmail: string;
+  }) => void;
   createCampaign: (campaignData: Partial<Campaign>) => Campaign;
   fundCampaign: (campaignId: string, paymentMethod: string) => Promise<boolean>;
   enrollInCampaign: (campaignId: string, creatorId: string) => boolean;
@@ -61,6 +89,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
   USERS: "creatorbid_users_v1",
+  ORGANIZATIONS: "creatorbid_orgs_v1",
+  CREATOR_PROFILES: "creatorbid_creators_v1",
   CAMPAIGNS: "creatorbid_campaigns_v1",
   SUBMISSIONS: "creatorbid_submissions_v1",
   PAYOUTS: "creatorbid_payouts_v1",
@@ -72,6 +102,8 @@ const STORAGE_KEYS = {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_USERS[0]); // default organizer
+  const [organizations, setOrganizations] = useState<Organization[]>(INITIAL_ORGANIZATIONS);
+  const [creatorProfiles, setCreatorProfiles] = useState<CreatorProfile[]>(INITIAL_CREATOR_PROFILES);
   const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS);
   const [submissions, setSubmissions] = useState<Submission[]>(INITIAL_SUBMISSIONS);
   const [payouts, setPayouts] = useState<PayoutRecord[]>(INITIAL_PAYOUTS);
@@ -101,6 +133,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load from local storage
   useEffect(() => {
     try {
+      const storedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+      const storedOrgs = localStorage.getItem(STORAGE_KEYS.ORGANIZATIONS);
+      const storedCreators = localStorage.getItem(STORAGE_KEYS.CREATOR_PROFILES);
       const storedCampaigns = localStorage.getItem(STORAGE_KEYS.CAMPAIGNS);
       const storedSubmissions = localStorage.getItem(STORAGE_KEYS.SUBMISSIONS);
       const storedPayouts = localStorage.getItem(STORAGE_KEYS.PAYOUTS);
@@ -108,19 +143,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const storedLogs = localStorage.getItem(STORAGE_KEYS.LOGS);
       const storedUserId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
 
+      if (storedUsers) setUsers(JSON.parse(storedUsers));
+      if (storedOrgs) setOrganizations(JSON.parse(storedOrgs));
+      if (storedCreators) setCreatorProfiles(JSON.parse(storedCreators));
       if (storedCampaigns) setCampaigns(JSON.parse(storedCampaigns));
       if (storedSubmissions) setSubmissions(JSON.parse(storedSubmissions));
       if (storedPayouts) setPayouts(JSON.parse(storedPayouts));
       if (storedDisputes) setDisputes(JSON.parse(storedDisputes));
       if (storedLogs) setAuditLogs(JSON.parse(storedLogs));
       if (storedUserId) {
-        const found = INITIAL_USERS.find(u => u.id === storedUserId);
+        const userList = storedUsers ? JSON.parse(storedUsers) : INITIAL_USERS;
+        const found = userList.find((u: User) => u.id === storedUserId);
         if (found) setCurrentUser(found);
       }
     } catch {
       // Fallback to initial seeds
     }
   }, []);
+
+  // Sync to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    } catch {}
+  }, [users]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ORGANIZATIONS, JSON.stringify(organizations));
+    } catch {}
+  }, [organizations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CREATOR_PROFILES, JSON.stringify(creatorProfiles));
+    } catch {}
+  }, [creatorProfiles]);
 
   // Sync to local storage
   useEffect(() => {
@@ -172,6 +230,262 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date().toISOString(),
     };
     setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  // Authentication functions
+  const login = (email: string, role?: UserRole): boolean => {
+    const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      setCurrentUser(existing);
+      addNotification(existing.id, "Logged In", `Welcome back, ${existing.name}!`, "campaign");
+      return true;
+    }
+
+    // Auto-create user if not found with specified role
+    const newUserRole: UserRole = role || "creator";
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      name: email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+      email,
+      role: newUserRole,
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80`,
+      createdAt: new Date().toISOString(),
+      organizationId: newUserRole === "organizer" ? `org-${Date.now()}` : undefined,
+    };
+
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+
+    if (newUserRole === "organizer") {
+      const newOrg: Organization = {
+        id: newUser.organizationId!,
+        userId: newUser.id,
+        name: `${newUser.name}'s Org`,
+        logo: newUser.avatarUrl,
+        category: "technology",
+        website: "https://example.com",
+        verified: false,
+        verificationStatus: "unverified",
+        totalFunded: 0,
+        activeCampaignsCount: 0,
+      };
+      setOrganizations(prev => [...prev, newOrg]);
+    } else if (newUserRole === "creator") {
+      const newProfile: CreatorProfile = {
+        id: `cp-${Date.now()}`,
+        userId: newUser.id,
+        displayName: newUser.name,
+        handle: `@${email.split("@")[0]}`,
+        bio: "Creative storyteller & video producer.",
+        categories: ["technology", "education"],
+        totalEarnings: 0,
+        rankingsWon: 0,
+        connectedAccounts: {},
+        verifiedIdentity: false,
+        verificationStatus: "unverified",
+      };
+      setCreatorProfiles(prev => [...prev, newProfile]);
+    }
+
+    addNotification(newUser.id, "Account Created", `Welcome to CreatorBid! Please complete profile verification.`, "campaign");
+    return true;
+  };
+
+  const register = (name: string, email: string, role: UserRole): User => {
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      name,
+      email,
+      role,
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80`,
+      createdAt: new Date().toISOString(),
+      organizationId: role === "organizer" ? `org-${Date.now()}` : undefined,
+    };
+
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+
+    if (role === "organizer") {
+      const newOrg: Organization = {
+        id: newUser.organizationId!,
+        userId: newUser.id,
+        name,
+        logo: newUser.avatarUrl,
+        category: "technology",
+        website: "",
+        verified: false,
+        verificationStatus: "unverified",
+        totalFunded: 0,
+        activeCampaignsCount: 0,
+      };
+      setOrganizations(prev => [...prev, newOrg]);
+    } else if (role === "creator") {
+      const newProfile: CreatorProfile = {
+        id: `cp-${Date.now()}`,
+        userId: newUser.id,
+        displayName: name,
+        handle: `@${name.toLowerCase().replace(/\s+/g, "_")}`,
+        bio: "Content creator exploring brand campaigns.",
+        categories: ["lifestyle", "technology"],
+        totalEarnings: 0,
+        rankingsWon: 0,
+        connectedAccounts: {},
+        verifiedIdentity: false,
+        verificationStatus: "unverified",
+      };
+      setCreatorProfiles(prev => [...prev, newProfile]);
+    }
+
+    return newUser;
+  };
+
+  const logout = () => {
+    // Switch to first default or public state
+    if (users.length > 0) {
+      setCurrentUser(users[0]);
+    }
+  };
+
+  // Profile Verification Functions
+  const submitCreatorVerification = (data: {
+    handle: string;
+    bio: string;
+    categories: string[];
+    instagram?: string;
+    youtube?: string;
+    govIdType: string;
+    govIdNumber: string;
+    portfolioUrl?: string;
+  }) => {
+    setCreatorProfiles(prev => {
+      const existing = prev.find(p => p.userId === currentUser.id);
+      if (existing) {
+        return prev.map(p =>
+          p.userId === currentUser.id
+            ? {
+                ...p,
+                handle: data.handle,
+                bio: data.bio,
+                categories: data.categories,
+                connectedAccounts: {
+                  instagram: data.instagram,
+                  youtube: data.youtube,
+                },
+                govIdType: data.govIdType,
+                govIdNumber: data.govIdNumber,
+                portfolioUrl: data.portfolioUrl,
+                verifiedIdentity: true,
+                verificationStatus: "verified",
+                verificationSubmittedAt: new Date().toISOString(),
+              }
+            : p
+        );
+      } else {
+        const newCP: CreatorProfile = {
+          id: `cp-${Date.now()}`,
+          userId: currentUser.id,
+          displayName: currentUser.name,
+          handle: data.handle,
+          bio: data.bio,
+          categories: data.categories,
+          totalEarnings: 0,
+          rankingsWon: 0,
+          connectedAccounts: {
+            instagram: data.instagram,
+            youtube: data.youtube,
+          },
+          govIdType: data.govIdType,
+          govIdNumber: data.govIdNumber,
+          portfolioUrl: data.portfolioUrl,
+          verifiedIdentity: true,
+          verificationStatus: "verified",
+          verificationSubmittedAt: new Date().toISOString(),
+        };
+        return [...prev, newCP];
+      }
+    });
+
+    addNotification(
+      currentUser.id,
+      "Identity Verified",
+      "Your Creator badge has been approved! You are now eligible to enroll in all verified brand campaigns.",
+      "campaign"
+    );
+
+    addAuditLog(
+      "CREATOR_VERIFIED",
+      "system",
+      "creator_profile",
+      currentUser.id,
+      `Creator ${currentUser.name} verified identity via ${data.govIdType} (handle: ${data.handle})`
+    );
+  };
+
+  const submitOrganizerVerification = (data: {
+    orgName: string;
+    category: string;
+    website: string;
+    businessRegistrationNumber: string;
+    gstNumber: string;
+    officialEmail: string;
+  }) => {
+    setOrganizations(prev => {
+      const existing = prev.find(o => o.userId === currentUser.id);
+      if (existing) {
+        return prev.map(o =>
+          o.userId === currentUser.id
+            ? {
+                ...o,
+                name: data.orgName,
+                category: data.category,
+                website: data.website,
+                businessRegistrationNumber: data.businessRegistrationNumber,
+                gstNumber: data.gstNumber,
+                officialEmail: data.officialEmail,
+                verified: true,
+                verificationStatus: "verified",
+                verificationSubmittedAt: new Date().toISOString(),
+              }
+            : o
+        );
+      } else {
+        const newOrg: Organization = {
+          id: currentUser.organizationId || `org-${Date.now()}`,
+          userId: currentUser.id,
+          name: data.orgName,
+          logo: currentUser.avatarUrl,
+          category: data.category,
+          website: data.website,
+          businessRegistrationNumber: data.businessRegistrationNumber,
+          gstNumber: data.gstNumber,
+          officialEmail: data.officialEmail,
+          verified: true,
+          verificationStatus: "verified",
+          verificationSubmittedAt: new Date().toISOString(),
+          totalFunded: 0,
+          activeCampaignsCount: 0,
+        };
+        return [...prev, newOrg];
+      }
+    });
+
+    // Update current user name if company name is specified
+    setCurrentUser(prev => ({ ...prev, name: data.orgName }));
+
+    addNotification(
+      currentUser.id,
+      "Bidder/Organization Verified",
+      "Your company registration and GST details have been verified. You can now launch and escrow-fund campaigns.",
+      "campaign"
+    );
+
+    addAuditLog(
+      "ORGANIZER_VERIFIED",
+      "system",
+      "organization",
+      currentUser.id,
+      `Organization ${data.orgName} verified with GST ${data.gstNumber}`
+    );
   };
 
   // Create Campaign
@@ -485,12 +799,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         setCurrentUser,
         users,
+        organizations,
+        creatorProfiles,
         campaigns,
         submissions,
         payouts,
         disputes,
         auditLogs,
         notifications,
+        login,
+        register,
+        logout,
+        submitCreatorVerification,
+        submitOrganizerVerification,
         createCampaign,
         fundCampaign,
         enrollInCampaign,
